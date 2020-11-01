@@ -1609,6 +1609,13 @@ XBSYSAPI EXPORTNUM(218) xbox::ntstatus_xt NTAPI xbox::NtQueryVolumeInformationFi
 	RETURN(ret);
 }
 
+// Allows using TCHAR as map key
+typedef std::basic_string<TCHAR> tstring;
+
+// Cache open files
+std::unordered_map<tstring, HANDLE> g_CachedHandles;
+
+
 // ******************************************************************
 // * 0x00DB - NtReadFile()
 // ******************************************************************
@@ -1647,6 +1654,22 @@ XBSYSAPI EXPORTNUM(219) xbox::ntstatus_xt NTAPI xbox::NtReadFile
 
 		CxbxDebugger::ReportFileRead(FileHandle, Length, Offset);
 	}
+
+	// Get file path from handle
+	TCHAR Path[MAX_PATH];
+	GetFinalPathNameByHandle(FileHandle, Path, MAX_PATH, VOLUME_NAME_NT);
+	if (g_CachedHandles.find(Path) == g_CachedHandles.end()) {
+		//CxbxDebugger::ReportNewTarget("Didn't see this file");
+		g_CachedHandles[Path] = FileHandle;
+		CxbxDebugger::ReportFileRead(FileHandle, 3, -2);
+		std::cout << "A";
+	}
+	else {
+		//CxbxDebugger::ReportNewTarget("Seen this file");
+		CxbxDebugger::ReportFileRead(FileHandle, 5, -1);
+		std::cout << "B";
+	}
+
 
 	NTSTATUS ret = NtDll::NtReadFile(
 		FileHandle,
